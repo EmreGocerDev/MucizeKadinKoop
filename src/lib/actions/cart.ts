@@ -85,33 +85,25 @@ export async function addToCart(productId: string, quantity: number = 1) {
         return { error: 'Ürün güncellenemedi: ' + error.message };
       }
     } else {
-      // Add new item
-      const { error } = await supabase
-        .from('cart_items')
-        .insert({
-          cart_id: cart.id,
-          product_id: productId,
-          quantity: quantity,
-        });
+    // Ürün fiyatını al
+    const { data: product } = await supabase
+      .from('products')
+      .select('price')
+      .eq('id', productId)
+      .single();
 
-      if (error) {
-        console.error('Cart item insert error:', error);
-        return { error: 'Ürün eklenemedi: ' + error.message };
-      }
+    if (!product) {
+      return { error: 'Ürün bulunamadı' };
     }
 
-    revalidatePath('/cart');
-    return { success: 'Ürün sepete eklendi' };
-  } catch (error) {
-    console.error('Unexpected error in addToCart:', error);
-    return { error: 'Beklenmeyen bir hata oluştu' };
-  }
-}
-
-export async function updateCartItem(itemId: string, quantity: number) {
-  const supabase = await createClient();
-
-  if (quantity <= 0) {
+    // Add new item
+    const { error } = await supabase
+      .from('cart_items')
+      .insert({
+        cart_id: cart.id,
+        product_id: productId,
+        quantity: quantity,
+        unit_price: product.price,
     return removeFromCart(itemId);
   }
 
