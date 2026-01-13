@@ -1,13 +1,22 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
 import { unstable_cache } from 'next/cache';
+import { createClient } from '@/lib/supabase/server';
 
 // Cached getCategories - 5 dakika cache
 export const getCategories = unstable_cache(
   async () => {
-    const supabase = await createClient();
-    
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => [],
+          setAll: () => {},
+        },
+      }
+    );
     const { data, error } = await supabase
       .from('categories')
       .select('*')
@@ -143,8 +152,16 @@ export async function getFeaturedProducts() {
 // Cached getPopularProducts - 5 dakika cache
 export const getPopularProducts = unstable_cache(
   async () => {
-    const supabase = await createClient();
-    
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => [],
+          setAll: () => {},
+        },
+      }
+    );
     const { data, error } = await supabase
       .from('products')
       .select(`
