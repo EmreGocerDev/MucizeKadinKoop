@@ -85,25 +85,45 @@ export async function addToCart(productId: string, quantity: number = 1) {
         return { error: 'Ürün güncellenemedi: ' + error.message };
       }
     } else {
-    // Ürün fiyatını al
-    const { data: product } = await supabase
-      .from('products')
-      .select('price')
-      .eq('id', productId)
-      .single();
+      // Ürün fiyatını al
+      const { data: product } = await supabase
+        .from('products')
+        .select('price')
+        .eq('id', productId)
+        .single();
 
-    if (!product) {
-      return { error: 'Ürün bulunamadı' };
+      if (!product) {
+        return { error: 'Ürün bulunamadı' };
+      }
+
+      // Add new item
+      const { error } = await supabase
+        .from('cart_items')
+        .insert({
+          cart_id: cart.id,
+          product_id: productId,
+          quantity: quantity,
+          unit_price: product.price,
+        });
+
+      if (error) {
+        console.error('Cart item insert error:', error);
+        return { error: 'Ürün eklenemedi: ' + error.message };
+      }
     }
 
-    // Add new item
-    const { error } = await supabase
-      .from('cart_items')
-      .insert({
-        cart_id: cart.id,
-        product_id: productId,
-        quantity: quantity,
-        unit_price: product.price,
+    revalidatePath('/cart');
+    return { success: 'Ürün sepete eklendi' };
+  } catch (error) {
+    console.error('Unexpected error in addToCart:', error);
+    return { error: 'Beklenmeyen bir hata oluştu' };
+  }
+}
+
+export async function updateCartItem(itemId: string, quantity: number) {
+  const supabase = await createClient();
+
+  if (quantity <= 0) {
     return removeFromCart(itemId);
   }
 
