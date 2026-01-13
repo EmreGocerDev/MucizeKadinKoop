@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Menu, X, ShoppingCart, User, Search, LogOut, Settings } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { logout } from '@/lib/actions/auth';
+import { useCart } from '@/context/CartContext';
 
 interface UserData {
   id: string;
@@ -21,10 +22,15 @@ interface HeaderProps {
 
 export default function Header({ initialUser = null, initialCartCount = 0 }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(initialCartCount);
+  const { cartCount, setCartCount } = useCart();
   const [user, setUser] = useState<UserData | null>(initialUser);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Sync initial cart count
+  useEffect(() => {
+    setCartCount(initialCartCount);
+  }, [initialCartCount, setCartCount]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -115,7 +121,7 @@ export default function Header({ initialUser = null, initialCartCount = 0 }: Hea
             <Link href="/cart" className="relative p-2 hover:bg-gray-100 rounded-full transition">
               <ShoppingCart className="h-5 w-5 text-gray-600" />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full font-bold animate-pulse">
                   {cartCount}
                 </span>
               )}
@@ -218,8 +224,15 @@ export default function Header({ initialUser = null, initialCartCount = 0 }: Hea
               </Link>
               <div className="flex items-center gap-4 pt-4 border-t">
                 <Link href="/cart" className="flex items-center gap-2 text-gray-700" onClick={() => setIsMenuOpen(false)}>
-                  <ShoppingCart className="h-5 w-5" />
-                  <span>Sepetim ({cartCount})</span>
+                  <div className="relative">
+                    <ShoppingCart className="h-5 w-5" />
+                    {cartCount > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full font-bold">
+                        {cartCount}
+                      </span>
+                    )}
+                  </div>
+                  <span>Sepetim</span>
                 </Link>
               </div>
               {user ? (

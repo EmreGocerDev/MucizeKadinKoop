@@ -1,7 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin, Phone, Mail, Clock, Send, MessageCircle } from 'lucide-react';
+
+interface SiteSettings {
+  contact_address?: string;
+  contact_phone1?: string;
+  contact_phone2?: string;
+  contact_email1?: string;
+  contact_email2?: string;
+  contact_hours_weekday?: string;
+  contact_hours_saturday?: string;
+}
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -13,6 +23,27 @@ export default function ContactPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [settings, setSettings] = useState<SiteSettings>({
+    contact_address: 'Kırıkkale Merkez',
+    contact_phone1: '+90 (318) 000 00 00',
+    contact_phone2: '',
+    contact_email1: 'info@mucizekadinkooperatifi.com',
+    contact_email2: '',
+    contact_hours_weekday: 'Pazartesi - Cuma: 09:00 - 18:00',
+    contact_hours_saturday: 'Cumartesi: 10:00 - 14:00',
+  });
+
+  useEffect(() => {
+    // Ayarları yükle
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data && Object.keys(data).length > 0) {
+          setSettings(prev => ({ ...prev, ...data }));
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,10 +91,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Adres</h3>
-                    <p className="text-gray-600 text-sm">
-                      Levent Mah. Büyükdere Cad.<br />
-                      No: 123, 34394<br />
-                      Şişli, İstanbul
+                    <p className="text-gray-600 text-sm whitespace-pre-line">
+                      {settings.contact_address}
                     </p>
                   </div>
                 </div>
@@ -74,8 +103,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Telefon</h3>
-                    <p className="text-gray-600 text-sm">+90 (212) 123 45 67</p>
-                    <p className="text-gray-600 text-sm">+90 (532) 987 65 43</p>
+                    {settings.contact_phone1 && <p className="text-gray-600 text-sm">{settings.contact_phone1}</p>}
+                    {settings.contact_phone2 && <p className="text-gray-600 text-sm">{settings.contact_phone2}</p>}
                   </div>
                 </div>
 
@@ -85,8 +114,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">E-posta</h3>
-                    <p className="text-gray-600 text-sm">info@evlezzetleri.com</p>
-                    <p className="text-gray-600 text-sm">destek@evlezzetleri.com</p>
+                    {settings.contact_email1 && <p className="text-gray-600 text-sm">{settings.contact_email1}</p>}
+                    {settings.contact_email2 && <p className="text-gray-600 text-sm">{settings.contact_email2}</p>}
                   </div>
                 </div>
 
@@ -96,8 +125,8 @@ export default function ContactPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Çalışma Saatleri</h3>
-                    <p className="text-gray-600 text-sm">Pazartesi - Cuma: 09:00 - 18:00</p>
-                    <p className="text-gray-600 text-sm">Cumartesi: 10:00 - 14:00</p>
+                    {settings.contact_hours_weekday && <p className="text-gray-600 text-sm">{settings.contact_hours_weekday}</p>}
+                    {settings.contact_hours_saturday && <p className="text-gray-600 text-sm">{settings.contact_hours_saturday}</p>}
                   </div>
                 </div>
               </div>

@@ -21,16 +21,16 @@ export default function HeroSection() {
             </div>
 
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
-              Ev Yapımı{' '}
+              Kırıkkale{' '}
               <span className="bg-gradient-to-r from-orange-600 to-emerald-600 bg-clip-text text-transparent">
-                Lezzetler
+                Mucize Kadın
               </span>{' '}
-              Kapınıza Gelsin
+              Kooperatifi
             </h1>
 
             <p className="text-lg text-gray-600 leading-relaxed max-w-xl">
-              Yerel ev aşçılarından taze, sağlıklı ve sevgiyle hazırlanmış ev yemeklerini 
-              keşfedin. Annelerimizin mutfağından sizin sofralarınıza.
+              Kadın kooperatifimizden taze, sağlıklı ve sevgiyle hazırlanmış el yapımı 
+              ürünleri keşfedin. Kooperatifimizden sofranıza.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
@@ -38,31 +38,9 @@ export default function HeroSection() {
                 href="/menu"
                 className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-orange-500 to-emerald-500 text-white px-8 py-4 rounded-full font-semibold hover:shadow-xl hover:shadow-orange-500/25 transition-all duration-300 group"
               >
-                <span>Menüyü Keşfet</span>
+                <span>Ürünleri İncele</span>
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition" />
               </Link>
-              <Link
-                href="/become-seller"
-                className="inline-flex items-center justify-center gap-2 border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-full font-semibold hover:border-orange-500 hover:text-orange-600 transition-all duration-300"
-              >
-                Satıcı Ol
-              </Link>
-            </div>
-
-            {/* Stats */}
-            <div className="flex flex-wrap gap-8 pt-4">
-              <div>
-                <p className="text-3xl font-bold text-gray-900">500+</p>
-                <p className="text-gray-600 text-sm">Ev Aşçısı</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-gray-900">10K+</p>
-                <p className="text-gray-600 text-sm">Mutlu Müşteri</p>
-              </div>
-              <div>
-                <p className="text-3xl font-bold text-gray-900">4.9</p>
-                <p className="text-gray-600 text-sm">Ortalama Puan</p>
-              </div>
             </div>
           </div>
 

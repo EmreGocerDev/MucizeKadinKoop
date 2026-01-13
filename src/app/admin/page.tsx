@@ -24,6 +24,7 @@ import {
   toggleProductStatus
 } from '@/lib/actions/admin';
 import { getUser, getUserProfile } from '@/lib/actions/auth';
+import { getSiteSettings, updateSiteSettings, SiteSettings } from '@/lib/actions/settings';
 
 interface Product {
   id: string;
@@ -74,6 +75,8 @@ export default function AdminPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showAddCategory, setShowAddCategory] = useState(false);
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({});
+  const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
 
   useEffect(() => {
     checkAdminAndLoadData();
@@ -97,17 +100,19 @@ export default function AdminPage() {
 
   const loadData = async () => {
     setLoading(true);
-    const [statsData, productsData, ordersData, categoriesData] = await Promise.all([
+    const [statsData, productsData, ordersData, categoriesData, settingsData] = await Promise.all([
       getAdminStats(),
       getAdminProducts(),
       getOrders(),
       getAdminCategories(),
+      getSiteSettings(),
     ]);
 
     setStats(statsData);
     setProducts(productsData);
     setOrders(ordersData);
     setCategories(categoriesData);
+    setSiteSettings(settingsData);
     setLoading(false);
   };
 
@@ -611,77 +616,150 @@ export default function AdminPage() {
 
           {/* Settings Tab */}
           {activeTab === 'settings' && (
-            <div className="max-w-2xl space-y-6">
+            <div className="max-w-3xl space-y-6">
+              {settingsMessage && (
+                <div className={`p-4 rounded-lg ${settingsMessage.includes('başarı') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  {settingsMessage}
+                </div>
+              )}
+              
+              {/* İletişim Bilgileri */}
               <div className="bg-white rounded-xl shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Site Ayarları</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">İletişim Bilgileri</h2>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Site Adı</label>
-                    <input
-                      type="text"
-                      defaultValue="Kırıkkale Mucize Kadın Kooperatifi"
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">İletişim E-posta</label>
-                    <input
-                      type="email"
-                      defaultValue="info@kirikkalekooperatif.com"
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
-                    <input
-                      type="tel"
-                      defaultValue="+90 (318) 123 45 67"
-                      className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-                    />
-                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Adres</label>
                     <textarea
-                      rows={2}
-                      defaultValue="Kırıkkale, Türkiye"
+                      rows={3}
+                      value={siteSettings.contact_address || ''}
+                      onChange={(e) => setSiteSettings({...siteSettings, contact_address: e.target.value})}
+                      placeholder="Adres bilgisi"
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     />
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Telefon 1</label>
+                      <input
+                        type="text"
+                        value={siteSettings.contact_phone1 || ''}
+                        onChange={(e) => setSiteSettings({...siteSettings, contact_phone1: e.target.value})}
+                        placeholder="+90 (XXX) XXX XX XX"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Telefon 2 (Opsiyonel)</label>
+                      <input
+                        type="text"
+                        value={siteSettings.contact_phone2 || ''}
+                        onChange={(e) => setSiteSettings({...siteSettings, contact_phone2: e.target.value})}
+                        placeholder="+90 (XXX) XXX XX XX"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">E-posta 1</label>
+                      <input
+                        type="email"
+                        value={siteSettings.contact_email1 || ''}
+                        onChange={(e) => setSiteSettings({...siteSettings, contact_email1: e.target.value})}
+                        placeholder="info@ornek.com"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">E-posta 2 (Opsiyonel)</label>
+                      <input
+                        type="email"
+                        value={siteSettings.contact_email2 || ''}
+                        onChange={(e) => setSiteSettings({...siteSettings, contact_email2: e.target.value})}
+                        placeholder="destek@ornek.com"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Hafta İçi Çalışma Saatleri</label>
+                      <input
+                        type="text"
+                        value={siteSettings.contact_hours_weekday || ''}
+                        onChange={(e) => setSiteSettings({...siteSettings, contact_hours_weekday: e.target.value})}
+                        placeholder="Pazartesi - Cuma: 09:00 - 18:00"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Cumartesi Çalışma Saatleri</label>
+                      <input
+                        type="text"
+                        value={siteSettings.contact_hours_saturday || ''}
+                        onChange={(e) => setSiteSettings({...siteSettings, contact_hours_saturday: e.target.value})}
+                        placeholder="Cumartesi: 10:00 - 14:00"
+                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
+              {/* Hakkımızda */}
               <div className="bg-white rounded-xl shadow-sm p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Ödeme Ayarları</h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Hakkımızda Sayfası</h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">PayTR Merchant ID</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Başlık</label>
                     <input
                       type="text"
-                      placeholder="Merchant ID giriniz"
+                      value={siteSettings.about_title || ''}
+                      onChange={(e) => setSiteSettings({...siteSettings, about_title: e.target.value})}
+                      placeholder="Hakkımızda başlığı"
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">PayTR Merchant Key</label>
-                    <input
-                      type="password"
-                      placeholder="Merchant Key giriniz"
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Kısa Açıklama</label>
+                    <textarea
+                      rows={2}
+                      value={siteSettings.about_description || ''}
+                      onChange={(e) => setSiteSettings({...siteSettings, about_description: e.target.value})}
+                      placeholder="Kısa açıklama"
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">PayTR Merchant Salt</label>
-                    <input
-                      type="password"
-                      placeholder="Merchant Salt giriniz"
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Hikayemiz</label>
+                    <textarea
+                      rows={6}
+                      value={siteSettings.about_story || ''}
+                      onChange={(e) => setSiteSettings({...siteSettings, about_story: e.target.value})}
+                      placeholder="Kooperatifinizin hikayesi..."
                       className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                     />
                   </div>
                 </div>
               </div>
 
-              <button className="w-full bg-gradient-to-r from-orange-500 to-emerald-500 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition">
-                Ayarları Kaydet
+              <button 
+                onClick={async () => {
+                  setSettingsMessage(null);
+                  startTransition(async () => {
+                    const result = await updateSiteSettings(siteSettings);
+                    if (result.success) {
+                      setSettingsMessage('Ayarlar başarıyla kaydedildi!');
+                    } else {
+                      setSettingsMessage(result.error || 'Bir hata oluştu');
+                    }
+                    setTimeout(() => setSettingsMessage(null), 3000);
+                  });
+                }}
+                disabled={isPending}
+                className="w-full bg-gradient-to-r from-orange-500 to-emerald-500 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition disabled:opacity-50"
+              >
+                {isPending ? 'Kaydediliyor...' : 'Ayarları Kaydet'}
               </button>
             </div>
           )}

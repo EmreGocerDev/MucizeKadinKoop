@@ -6,6 +6,7 @@ import { ShoppingCart } from 'lucide-react';
 import { Product } from '@/types';
 import { addToCart } from '@/lib/actions/cart';
 import { useState } from 'react';
+import { useCart } from '@/context/CartContext';
 
 interface ProductCardProps {
   product: Product;
@@ -13,12 +14,20 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const [isAdding, setIsAdding] = useState(false);
+  const { incrementCart, showNotification } = useCart();
   const isAvailable = (product.stock_quantity || 0) > 0 && product.is_active !== false;
 
   const handleAddToCart = async () => {
     setIsAdding(true);
-    await addToCart(product.id, 1);
+    const result = await addToCart(product.id, 1);
     setIsAdding(false);
+    
+    if (result?.success) {
+      incrementCart();
+      showNotification(`${product.name} sepete eklendi!`);
+    } else if (result?.error) {
+      showNotification(result.error);
+    }
   };
 
   return (
