@@ -4,12 +4,14 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   const supabase = await createClient();
   
+  // İlk satırı al
   const { data, error } = await supabase
     .from('site_settings')
     .select('*')
-    .single();
+    .order('created_at', { ascending: true })
+    .limit(1);
 
-  if (error) {
+  if (error || !data || data.length === 0) {
     // Varsayılan değerler
     return NextResponse.json({
       contact_address: 'Kırıkkale Merkez',
@@ -25,5 +27,5 @@ export async function GET() {
     });
   }
 
-  return NextResponse.json(data);
+  return NextResponse.json(data[0]);
 }

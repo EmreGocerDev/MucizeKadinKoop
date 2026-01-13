@@ -26,12 +26,14 @@ export interface SiteSettings {
 export async function getSiteSettings(): Promise<SiteSettings> {
   const supabase = await createClient();
   
+  // İlk satırı al (birden fazla olabilir)
   const { data, error } = await supabase
     .from('site_settings')
     .select('*')
-    .single();
+    .order('created_at', { ascending: true })
+    .limit(1);
 
-  if (error) {
+  if (error || !data || data.length === 0) {
     console.error('Error fetching site settings:', error);
     // Varsayılan değerler
     return {
@@ -48,7 +50,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     };
   }
 
-  return data || {};
+  return data[0] || {};
 }
 
 export async function updateSiteSettings(settings: SiteSettings) {
@@ -70,11 +72,14 @@ export async function updateSiteSettings(settings: SiteSettings) {
     return { error: 'Yetkisiz erişim' };
   }
 
-  // Önce mevcut ayarları kontrol et
-  const { data: existing } = await supabase
+  // Önce mevcut ayarları kontrol et (ilk satır)
+  const { data: existingList } = await supabase
     .from('site_settings')
     .select('id')
-    .single();
+    .order('created_at', { ascending: true })
+    .limit(1);
+
+  const existing = existingList && existingList.length > 0 ? existingList[0] : null;
 
   let error;
   
