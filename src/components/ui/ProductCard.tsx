@@ -19,14 +19,23 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   const handleAddToCart = async () => {
     setIsAdding(true);
-    const result = await addToCart(product.id, 1);
-    setIsAdding(false);
-    
-    if (result?.success) {
-      incrementCart();
-      showNotification(`${product.name} sepete eklendi!`);
-    } else if (result?.error) {
-      showNotification(result.error);
+    try {
+      const result = await addToCart(product.id, 1);
+      setIsAdding(false);
+      
+      if (result?.success) {
+        incrementCart();
+        showNotification(`${product.name} sepete eklendi!`);
+      } else if (result?.error) {
+        showNotification(result.error);
+      } else {
+        console.error('Beklenmeyen sonuç:', result);
+        showNotification('Bir hata oluştu, lütfen tekrar deneyin');
+      }
+    } catch (error) {
+      setIsAdding(false);
+      console.error('Sepete ekleme hatası:', error);
+      showNotification('Bir hata oluştu, lütfen tekrar deneyin');
     }
   };
 

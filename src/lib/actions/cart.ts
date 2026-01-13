@@ -31,68 +31,81 @@ export async function getCart() {
 }
 
 export async function addToCart(productId: string, quantity: number = 1) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { error: 'Sepete eklemek için giriş yapmalısınız' };
-  }
+    if (!user) {
+      return { error: 'Sepete eklemek için giriş yapmalısınız' };
+    }
 
-  // Get or create cart
-  let { data: cart } = await supabase
-    .from('carts')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
-
-  if (!cart) {
-    const { data: newCart, error: cartError } = await supabase
+    // Get or create cart
+    let { data: cart, error: cartFetchError } = await supabase
       .from('carts')
-      .insert({ user_id: user.id })
       .select('id')
+      .eq('user_id', user.id)
       .single();
 
-    if (cartError) {
-      return { error: 'Sepet oluşturulamadı' };
+    if (cartFetchError && cartFetchError.code !== 'PGRST116') {
+      console.error('Cart fetch error:', cartFetchError);
+      return { error: 'Sepet bilgisi alınamadı' };
     }
-    cart = newCart;
-  }
 
-  // Check if product already in cart
-  const { data: existingItem } = await supabase
-    .from('cart_items')
-    .select('id, quantity')
-    .eq('cart_id', cart.id)
-    .eq('product_id', productId)
-    .single();
+    if (!cart) {
+      const { data: newCart, error: cartError } = await supabase
+        .from('carts')
+        .insert({ user_id: user.id })
+        .select('id')
+        .single();
 
-  if (existingItem) {
-    // Update quantity
-    const { error } = await supabase
+      if (cartError) {
+        console.error('Cart create error:', cartError);
+        return { error: 'Sepet oluşturulamadı: ' + cartError.message };
+      }
+      cart = newCart;
+    }
+
+    // Check if product already in cart
+    const { data: existingItem } = await supabase
       .from('cart_items')
-      .update({ quantity: existingItem.quantity + quantity })
-      .eq('id', existingItem.id);
+      .select('id, quantity')
+      .eq('cart_id', cart.id)
+      .eq('product_id', productId)
+      .single();
 
-    if (error) {
-      return { error: 'Ürün güncellenemedi' };
-    }
-  } else {
-    // Add new item
-    const { error } = await supabase
-      .from('cart_items')
-      .insert({
-        cart_id: cart.id,
-        product_id: productId,
-        quantity: quantity,
-      });
+    if (existingItem) {
+      // Update quantity
+      const { error } = await supabase
+        .from('cart_items')
+        .update({ quantity: existingItem.quantity + quantity })
+        .eq('id', existingItem.id);
 
-    if (error) {
-      return { error: 'Ürün eklenemedi' };
+      if (error) {
+        console.error('Cart item update error:', error);
+        return { error: 'Ürün güncellenemedi: ' + error.message };
+      }
+    } else {
+      // Add new item
+      const { error } = await supabase
+        .from('cart_items')
+        .insert({
+          cart_id: cart.id,
+          product_id: productId,
+          quantity: quantity,
+        });
+
+      if (error) {
+        console.error('Cart item insert error:', error);
+        return { error: 'Ürün eklenemedi: ' + error.message };
+      }
     }
+
+    revalidatePath('/cart');
+    return { success: 'Ürün sepete eklendi' };
+  } catch (error) {
+    console.error('Unexpected error in addToCart:', error);
+    return { error: 'Beklenmeyen bir hata oluştu' };
   }
-
-  revalidatePath('/cart');
-  return { success: 'Ürün sepete eklendi' };
 }
 
 export async function updateCartItem(itemId: string, quantity: number) {
