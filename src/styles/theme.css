@@ -1,0 +1,28 @@
+/* Tailwind tema renkleri */
+:root {
+  /* Primary: Orange */
+  --color-primary: #f97316;
+  --color-primary-light: #fdba74;
+  --color-primary-dark: #ea580c;
+  
+  /* Secondary: Fresh Green (Tazelik Yeşili) */
+  --color-secondary: #10b981;
+  --color-secondary-light: #6ee7b7;
+  --color-secondary-dark: #059669;
+  
+  /* Accent: Red */
+  --color-accent: #ef4444;
+}
+
+/* Custom utilities */
+.gradient-primary {
+  @apply bg-gradient-to-r from-orange-500 to-emerald-500;
+}
+
+.gradient-hero {
+  @apply bg-gradient-to-br from-orange-50 via-white to-emerald-50;
+}
+
+.text-gradient {
+  @apply bg-gradient-to-r from-orange-600 to-emerald-600 bg-clip-text text-transparent;
+}
