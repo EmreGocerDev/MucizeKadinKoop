@@ -5,8 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Menu, X, ShoppingCart, User, Search, LogOut, Settings } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { logout } from '@/lib/actions/auth';
 import { useCart } from '@/context/CartContext';
+import type { Session } from '@supabase/supabase-js';
 
 interface UserData {
   id: string;
@@ -29,50 +29,122 @@ export default function Header({ initialUser = null, initialCartCount = 0 }: Hea
 
   // Sync initial cart count
   useEffect(() => {
-    setCartCount(initialCartCount);
+    if (initialCartCount > 0) {
+      setCartCount(initialCartCount);
+    }
   }, [initialCartCount, setCartCount]);
 
+  // Load user on mount and listen for auth changes
   useEffect(() => {
     const supabase = createClient();
-
-    // Listen for auth changes (for client-side auth events)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth event:', event);
-      if (event === 'SIGNED_IN' && session?.user) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        
-        setUser({
-          id: session.user.id,
-          email: session.user.email || '',
-          full_name: profile?.full_name,
-          role: profile?.role,
+    let isMounted = true;
+    const syncAuthState = async (event: string, session: Session | null) => {
+      try {
+        await fetch('/api/auth/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          cache: 'no-store',
+          body: JSON.stringify({ event, session }),
         });
+      } catch (error) {
+        console.error('Failed to sync auth state', error);
+      }
+    };
+
+    // Helper function to load user profile
+    const loadUserProfile = async (userId: string, email: string) => {
+      try {
+        const { data: profile } = (await supabase
+          .from('users')
+          .select('full_name, role')
+          .eq('id', userId)
+          .single()) as {
+          data: { full_name?: string | null; role?: string | null } | null;
+        };
+        
+        if (isMounted) {
+          setUser({
+            id: userId,
+            email: email,
+            full_name: profile?.full_name ?? undefined,
+            role: profile?.role ?? undefined,
+          });
+        }
         
         // Get cart count
-        const { data: cart } = await supabase
+        const { data: cart } = (await supabase
           .from('carts')
           .select('cart_items(id)')
-          .eq('user_id', session.user.id)
-          .single();
+          .eq('user_id', userId)
+          .single()) as {
+          data: { cart_items?: { id: string }[] } | null;
+        };
         
-        setCartCount(cart?.cart_items?.length || 0);
+        if (isMounted) {
+          setCartCount(cart?.cart_items?.length || 0);
+        }
+      } catch (err) {
+        console.error('Error loading profile:', err);
+      }
+    };
+
+    const initSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await syncAuthState('INITIAL_SESSION', session);
+          await loadUserProfile(session.user.id, session.user.email || '');
+        }
+      } catch (error) {
+        console.error('Failed to init session', error);
+      }
+    };
+
+    void initSession();
+
+    // Listen for auth changes - this also fires INITIAL_SESSION on mount
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event, 'Session:', session ? 'exists' : 'null');
+      void syncAuthState(event, session);
+      
+      if (session?.user) {
+        await loadUserProfile(session.user.id, session.user.email || '');
       } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setCartCount(0);
+        if (isMounted) {
+          setUser(null);
+          setCartCount(0);
+        }
+      }
+      
+      if (isMounted) {
+        setIsLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [setCartCount]);
 
   const handleLogout = async () => {
-    await logout();
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    try {
+      await fetch('/api/auth/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store',
+        body: JSON.stringify({ event: 'SIGNED_OUT', session: null }),
+      });
+    } catch (error) {
+      console.error('Failed to sync sign out', error);
+    }
     setUser(null);
     setShowUserMenu(false);
+    window.location.href = '/';
   };
 
   return (

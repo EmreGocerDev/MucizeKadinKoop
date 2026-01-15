@@ -23,8 +23,8 @@ import {
   updateOrderStatus,
   toggleProductStatus
 } from '@/lib/actions/admin';
-import { getUser, getUserProfile } from '@/lib/actions/auth';
 import { getSiteSettings, updateSiteSettings, SiteSettings } from '@/lib/actions/settings';
+import { createClient } from '@/lib/supabase/client';
 
 interface Product {
   id: string;
@@ -79,24 +79,50 @@ export default function AdminPage() {
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    checkAdminAndLoadData();
-  }, []);
-
-  const checkAdminAndLoadData = async () => {
-    const user = await getUser();
-    if (!user) {
-      router.push('/login');
-      return;
-    }
+    let isMounted = true;
     
-    const profile = await getUserProfile();
-    if (profile?.role !== 'admin') {
-      router.push('/');
-      return;
-    }
+    const checkAdminAndLoadData = async () => {
+      try {
+        const supabase = createClient();
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        if (!session?.user) {
+          router.replace('/login');
+          return;
+        }
+        
+        // Check if admin
+        const { data: profile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', session.user.id)
+          .single() as { data: { role: string } | null };
+          
+        if (!isMounted) return;
+          
+        if (profile?.role !== 'admin') {
+          router.replace('/');
+          return;
+        }
 
-    await loadData();
-  };
+        await loadData();
+      } catch (error: any) {
+        console.error('Admin check error:', error);
+        if (isMounted) {
+          router.replace('/login');
+        }
+      }
+    };
+    
+    checkAdminAndLoadData();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
 
   const loadData = async () => {
     setLoading(true);

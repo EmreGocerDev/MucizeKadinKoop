@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Eye, EyeOff, Mail, Lock, CheckCircle, AlertCircle } from 'lucide-react';
-import { login } from '@/lib/actions/auth';
+import { createClient } from '@/lib/supabase/client';
 
 function LoginForm() {
+  const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,10 +26,55 @@ function LoginForm() {
     setError(null);
 
     const formData = new FormData(e.currentTarget);
-    const result = await login(formData);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
 
-    if (result?.error) {
-      setError(result.error);
+    try {
+      const supabase = createClient();
+      
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        console.error('Login error:', signInError);
+        setError(signInError.message === 'Invalid login credentials' 
+          ? 'E-posta veya şifre hatalı' 
+          : signInError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data.session) {
+        setError('Giriş başarısız oldu. Lütfen tekrar deneyin.');
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        await fetch('/api/auth/state', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          cache: 'no-store',
+          body: JSON.stringify({ event: 'SIGNED_IN', session: data.session }),
+        });
+      } catch (syncError) {
+        console.error('Auth state sync failed', syncError);
+      }
+
+      // Login successful - refresh router and redirect
+      const redirectTo = searchParams.get('redirectTo') || '/';
+      router.refresh();
+      // Small delay to ensure cookies are set
+      setTimeout(() => {
+        window.location.href = redirectTo;
+      }, 100);
+      
+    } catch (err: any) {
+      console.error('Login catch error:', err);
+      setError('Bağlantı hatası. Sayfayı yenileyip tekrar deneyin.');
       setIsLoading(false);
     }
   };

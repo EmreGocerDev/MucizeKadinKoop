@@ -8,7 +8,7 @@ import {
   MapPin, Phone, CreditCard, Building, Truck, 
   ChevronRight, Shield, Lock, ArrowLeft, Loader2 
 } from 'lucide-react';
-import { getCart } from '@/lib/actions/cart';
+import { getCartClient } from '@/lib/cart-client';
 
 interface CartItem {
   id: string;
@@ -51,7 +51,7 @@ export default function CheckoutPage() {
 
   const loadCart = async () => {
     setLoading(true);
-    const cart = await getCart();
+    const cart = await getCartClient();
     if (!cart || cart.cart_items.length === 0) {
       router.push('/cart');
       return;

@@ -10,7 +10,6 @@ import {
   Loader2
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { logout } from '@/lib/actions/auth';
 
 interface UserProfile {
   id: string;
@@ -43,60 +42,113 @@ export default function AccountPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
     const supabase = createClient();
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      router.push('/login');
-      return;
-    }
+    let isMounted = true;
 
-    // Get profile
-    const { data: profileData } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    const init = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
+        
+        if (!session?.user) {
+          router.replace('/login?redirectTo=/account');
+          return;
+        }
 
-    if (profileData) {
-      setProfile({
-        ...profileData,
-        email: user.email || '',
-      });
-    }
+        const user = session.user;
 
-    // Get orders
-    const { data: ordersData } = await supabase
-      .from('orders')
-      .select(`
-        *,
-        order_items (
-          id,
-          quantity,
-          price,
-          products (
-            name,
-            image_url
-          )
-        )
-      `)
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+        // Get profile
+        const { data: profileData } = (await supabase
+          .from('users')
+          .select('full_name, phone, role, created_at')
+          .eq('id', user.id)
+          .single()) as {
+          data:
+            | {
+                full_name?: string | null;
+                phone?: string | null;
+                role?: string | null;
+                created_at?: string | null;
+              }
+            | null;
+        };
 
-    setOrders(ordersData || []);
-    setLoading(false);
-  };
+        if (!isMounted) return;
+
+        setProfile({
+          id: user.id,
+          email: user.email || '',
+          full_name: profileData?.full_name || user.user_metadata?.full_name || 'Kullanıcı',
+          phone: profileData?.phone || user.user_metadata?.phone || '',
+          role: profileData?.role || 'customer',
+          created_at: profileData?.created_at || user.created_at || '',
+        });
+
+        // Get orders
+        const { data: ordersData } = await supabase
+          .from('orders')
+          .select(`
+            *,
+            order_items (
+              id,
+              quantity,
+              price,
+              products (name, image_url)
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (isMounted) {
+          setOrders(ordersData || []);
+          setLoading(false);
+        }
+      } catch (err: any) {
+        console.error('Account init error:', err);
+        if (isMounted) {
+          // Don't show abort errors
+          if (!err.message?.includes('abort')) {
+            setError(err.message);
+          }
+          setLoading(false);
+        }
+      }
+    };
+
+    init();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        router.replace('/login');
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router]);
 
   const handleLogout = async () => {
-    await logout();
-    router.push('/');
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    try {
+      await fetch('/api/auth/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store',
+        body: JSON.stringify({ event: 'SIGNED_OUT', session: null }),
+      });
+    } catch (error) {
+      console.error('Failed to sync sign out', error);
+    }
+    window.location.href = '/';
   };
 
   const getStatusIcon = (status: string) => {
@@ -124,7 +176,44 @@ export default function AccountPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-orange-500" />
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-orange-500 mx-auto mb-4" />
+          <p className="text-gray-600">Yükleniyor...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-4">
+            <p className="text-red-800">{error}</p>
+          </div>
+          <Link 
+            href="/login"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-emerald-500 text-white px-6 py-3 rounded-full font-semibold hover:shadow-lg transition"
+          >
+            Giriş Sayfasına Dön
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Profil bilgisi bulunamadı</p>
+          <Link 
+            href="/login"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-orange-500 to-emerald-500 text-white px-6 py-3 rounded-full font-semibold hover:shadow-lg transition"
+          >
+            Giriş Yap
+          </Link>
+        </div>
       </div>
     );
   }

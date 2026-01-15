@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Tag, Loader2 } from 'lucide-react';
-import { getCart, updateCartItem, removeFromCart } from '@/lib/actions/cart';
+import { getCartClient, updateCartItemClient, removeFromCartClient } from '@/lib/cart-client';
 
 interface CartItem {
   id: string;
@@ -26,7 +26,7 @@ interface Cart {
 export default function CartPage() {
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isPending, startTransition] = useTransition();
+  const [updating, setUpdating] = useState<string | null>(null);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
 
@@ -36,23 +36,23 @@ export default function CartPage() {
 
   const loadCart = async () => {
     setLoading(true);
-    const cartData = await getCart();
+    const cartData = await getCartClient();
     setCart(cartData);
     setLoading(false);
   };
 
-  const handleUpdateQuantity = (itemId: string, newQuantity: number) => {
-    startTransition(async () => {
-      await updateCartItem(itemId, newQuantity);
-      await loadCart();
-    });
+  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
+    setUpdating(itemId);
+    await updateCartItemClient(itemId, newQuantity);
+    await loadCart();
+    setUpdating(null);
   };
 
-  const handleRemoveItem = (itemId: string) => {
-    startTransition(async () => {
-      await removeFromCart(itemId);
-      await loadCart();
-    });
+  const handleRemoveItem = async (itemId: string) => {
+    setUpdating(itemId);
+    await removeFromCartClient(itemId);
+    await loadCart();
+    setUpdating(null);
   };
 
   const cartItems = cart?.cart_items || [];
@@ -135,7 +135,7 @@ export default function CartPage() {
                       <button
                         onClick={() => handleRemoveItem(item.id)}
                         className="text-gray-400 hover:text-red-500 transition"
-                        disabled={isPending}
+                        disabled={updating === item.id}
                       >
                         <Trash2 className="h-5 w-5" />
                       </button>
@@ -146,7 +146,7 @@ export default function CartPage() {
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                          disabled={isPending}
+                          disabled={updating === item.id}
                           className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition disabled:opacity-50"
                         >
                           <Minus className="h-4 w-4" />
@@ -156,7 +156,7 @@ export default function CartPage() {
                         </span>
                         <button
                           onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                          disabled={isPending}
+                          disabled={updating === item.id}
                           className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition disabled:opacity-50"
                         >
                           <Plus className="h-4 w-4" />

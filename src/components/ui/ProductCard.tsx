@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ShoppingCart } from 'lucide-react';
 import { Product } from '@/types';
-import { addToCart } from '@/lib/actions/cart';
+import { addToCartClient } from '@/lib/cart-client';
 import { useState } from 'react';
 import { useCart } from '@/context/CartContext';
 
@@ -20,7 +20,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const handleAddToCart = async () => {
     setIsAdding(true);
     try {
-      const result = await addToCart(product.id, 1);
+      const result = await addToCartClient(product.id, 1);
       setIsAdding(false);
       
       if (result?.success) {

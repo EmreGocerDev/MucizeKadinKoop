@@ -19,7 +19,10 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath('/', 'layout');
-  redirect('/');
+  
+  // Get redirect URL if provided
+  const redirectTo = formData.get('redirectTo') as string;
+  redirect(redirectTo || '/');
 }
 
 export async function signup(formData: FormData) {

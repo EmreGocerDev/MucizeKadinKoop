@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { CartProvider } from '@/context/CartContext';
+import AuthSync from '@/components/layout/AuthSync';
 
 interface UserData {
   id: string;
@@ -23,11 +24,17 @@ export default function LayoutWrapper({ children, initialUser, initialCartCount 
   const isAdminPage = pathname?.startsWith('/admin');
 
   if (isAdminPage) {
-    return <>{children}</>;
+    return (
+      <>
+        <AuthSync />
+        {children}
+      </>
+    );
   }
 
   return (
     <CartProvider initialCount={initialCartCount}>
+      <AuthSync />
       <Header initialUser={initialUser} initialCartCount={initialCartCount} />
       <main className="min-h-screen">
         {children}
