@@ -1,15 +1,16 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export async function updateSession(request: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
 
+export async function updateSession(request: NextRequest) {
   if (!supabaseUrl || !supabaseKey) {
     return NextResponse.next();
   }
 
-  const response = NextResponse.next({
+  // Create an unmodified response
+  let supabaseResponse = NextResponse.next({
     request: {
       headers: request.headers,
     },
@@ -22,36 +23,23 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            response.cookies.set(name, value, options);
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = NextResponse.next({
+            request,
           });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
         },
       },
     });
 
-    const { data: { user } } = await supabase.auth.getUser();
+    // Refresh session if expired
+    await supabase.auth.getUser();
 
-    const protectedRoutes = ['/account', '/admin', '/checkout'];
-    const isProtectedRoute = protectedRoutes.some((route) =>
-      request.nextUrl.pathname.startsWith(route)
-    );
-
-    if (isProtectedRoute && !user) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      url.searchParams.set('redirectTo', request.nextUrl.pathname);
-
-      const redirectResponse = NextResponse.redirect(url);
-      response.cookies.getAll().forEach((cookie) => {
-        redirectResponse.cookies.set(cookie);
-      });
-
-      return redirectResponse;
-    }
-
-    return response;
+    return supabaseResponse;
   } catch (error) {
-    console.error('Proxy error:', error);
-    return response;
+    console.error('Middleware error:', error);
+    return supabaseResponse;
   }
 }

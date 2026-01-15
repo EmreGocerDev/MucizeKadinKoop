@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -77,52 +77,100 @@ export default function AdminPage() {
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [siteSettings, setSiteSettings] = useState<SiteSettings>({});
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
+  const isCheckingRef = useRef(false);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
     let isMounted = true;
-    
+    let isInitializing = true;
+
     const checkAdminAndLoadData = async () => {
+      if (isCheckingRef.current || hasLoadedRef.current) return;
+      isCheckingRef.current = true;
       try {
         const supabase = createClient();
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        
+
+        const { data: { user } } = await supabase.auth.getUser();
+
         if (!isMounted) return;
-        
-        if (!session?.user) {
-          router.replace('/login');
+
+        if (!user) {
+          if (isInitializing) {
+            router.replace('/login?redirectTo=/admin');
+          }
           return;
         }
-        
+
         // Check if admin
-        const { data: profile } = await supabase
+        const { data: profile } = (await supabase
           .from('users')
           .select('role')
-          .eq('id', session.user.id)
-          .single() as { data: { role: string } | null };
-          
+          .eq('id', user.id)
+          .single()) as { data: { role: string } | null };
+
         if (!isMounted) return;
-          
+
         if (profile?.role !== 'admin') {
-          router.replace('/');
+          if (isInitializing) {
+            router.replace('/');
+          }
           return;
         }
 
         await loadData();
+        hasLoadedRef.current = true;
+        isInitializing = false;
       } catch (error: any) {
         console.error('Admin check error:', error);
-        if (isMounted) {
-          router.replace('/login');
+        if (isMounted && isInitializing) {
+          router.replace('/login?redirectTo=/admin');
         }
+      } finally {
+        isCheckingRef.current = false;
       }
     };
-    
+
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT' && !isInitializing) {
+        window.location.href = '/login?redirectTo=/admin';
+      }
+    });
+
     checkAdminAndLoadData();
-    
+
     return () => {
       isMounted = false;
+      subscription.unsubscribe();
     };
-  }, [router]);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      
+      await fetch('/api/auth/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        cache: 'no-store',
+        body: JSON.stringify({ event: 'SIGNED_OUT', session: null }),
+      });
+      
+      // Clear local state
+      setStats(null);
+      setProducts([]);
+      setOrders([]);
+      setCategories([]);
+      
+      // Hard redirect to home
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout error:', error);
+      window.location.href = '/';
+    }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -299,6 +347,13 @@ export default function AdminPage() {
             <LogOut className="h-5 w-5" />
             <span>Siteye Dön</span>
           </Link>
+          <button
+            onClick={handleLogout}
+            className="mt-2 w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded-lg transition"
+          >
+            <LogOut className="h-5 w-5" />
+            <span>Çıkış Yap</span>
+          </button>
         </div>
       </aside>
 
@@ -318,6 +373,13 @@ export default function AdminPage() {
             </h1>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600">Hoş geldiniz, Admin</span>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900"
+              >
+                <LogOut className="h-4 w-4" />
+                Çıkış Yap
+              </button>
             </div>
           </div>
         </header>

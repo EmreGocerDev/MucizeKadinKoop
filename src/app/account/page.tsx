@@ -47,6 +47,7 @@ export default function AccountPage() {
   useEffect(() => {
     const supabase = createClient();
     let isMounted = true;
+    let isInitializing = true;
 
     const init = async () => {
       try {
@@ -55,7 +56,9 @@ export default function AccountPage() {
         if (!isMounted) return;
         
         if (!session?.user) {
-          router.replace('/login?redirectTo=/account');
+          if (isInitializing) {
+            router.replace('/login?redirectTo=/account');
+          }
           return;
         }
 
@@ -106,6 +109,7 @@ export default function AccountPage() {
         if (isMounted) {
           setOrders(ordersData || []);
           setLoading(false);
+          isInitializing = false;
         }
       } catch (err: any) {
         console.error('Account init error:', err);
@@ -115,6 +119,7 @@ export default function AccountPage() {
             setError(err.message);
           }
           setLoading(false);
+          isInitializing = false;
         }
       }
     };
@@ -123,8 +128,8 @@ export default function AccountPage() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        router.replace('/login');
+      if (event === 'SIGNED_OUT' && !isInitializing) {
+        window.location.href = '/login';
       }
     });
 
@@ -132,12 +137,13 @@ export default function AccountPage() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [router]);
+  }, []);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
     try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      
       await fetch('/api/auth/state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -145,10 +151,17 @@ export default function AccountPage() {
         cache: 'no-store',
         body: JSON.stringify({ event: 'SIGNED_OUT', session: null }),
       });
+      
+      // Clear local state
+      setProfile(null);
+      setOrders([]);
+      
+      // Hard redirect to home
+      window.location.href = '/';
     } catch (error) {
-      console.error('Failed to sync sign out', error);
+      console.error('Logout error:', error);
+      window.location.href = '/';
     }
-    window.location.href = '/';
   };
 
   const getStatusIcon = (status: string) => {

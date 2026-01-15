@@ -25,7 +25,15 @@ export default function AuthSync() {
 
     const initSession = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session error:', error.message);
+          // Clear invalid session
+          await supabase.auth.signOut();
+          return;
+        }
+        
         if (session?.user && isMounted) {
           await syncAuthState('INITIAL_SESSION', session);
         }
@@ -36,8 +44,14 @@ export default function AuthSync() {
 
     void initSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      void syncAuthState(event, session);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('Token refreshed successfully');
+      }
+      
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        await syncAuthState(event, session);
+      }
     });
 
     return () => {

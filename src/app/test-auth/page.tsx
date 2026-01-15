@@ -130,7 +130,7 @@ export default function TestAuthPage() {
             <h3 className="font-semibold mb-2">Environment Variables:</h3>
             <div className="text-sm space-y-1">
               <p>SUPABASE_URL: {process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓ Set' : '✗ Missing'}</p>
-              <p>SUPABASE_ANON_KEY: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✓ Set' : '✗ Missing'}</p>
+              <p>SUPABASE_PUBLISHABLE_KEY: {process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ? '✓ Set' : '✗ Missing'}</p>
             </div>
           </div>
         </div>

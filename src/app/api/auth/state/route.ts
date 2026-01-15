@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY!,
       {
         cookies: {
           getAll() {
@@ -44,6 +44,14 @@ export async function POST(request: Request) {
 
     if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESH_FAILED') {
       await supabase.auth.signOut();
+      
+      // Clear all auth cookies
+      requestCookies
+        .filter(cookie => cookie.name.startsWith('sb-'))
+        .forEach(cookie => {
+          response.cookies.delete(cookie.name);
+        });
+      
       return response;
     }
 
@@ -53,14 +61,18 @@ export async function POST(request: Request) {
 
     const { access_token, refresh_token } = session;
 
-    if (!access_token || !refresh_token) {
-      return NextResponse.json({ error: 'Missing session tokens' }, { status: 400 });
+    if (!access_token) {
+      return NextResponse.json({ error: 'Missing access token' }, { status: 400 });
     }
 
-    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+    // Only set session if we have valid tokens
+    if (refresh_token) {
+      const { error } = await supabase.auth.setSession({ access_token, refresh_token });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+      if (error) {
+        console.error('[auth/state] setSession error:', error.message);
+        // Don't return error, just log it
+      }
     }
 
     return response;

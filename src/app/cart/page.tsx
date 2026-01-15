@@ -35,24 +35,39 @@ export default function CartPage() {
   }, []);
 
   const loadCart = async () => {
-    setLoading(true);
-    const cartData = await getCartClient();
-    setCart(cartData);
-    setLoading(false);
+    try {
+      setLoading(true);
+      const cartData = await getCartClient();
+      setCart(cartData);
+    } catch (error) {
+      console.error('Cart load error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
-    setUpdating(itemId);
-    await updateCartItemClient(itemId, newQuantity);
-    await loadCart();
-    setUpdating(null);
+    try {
+      setUpdating(itemId);
+      await updateCartItemClient(itemId, newQuantity);
+      await loadCart();
+    } catch (error) {
+      console.error('Update quantity error:', error);
+    } finally {
+      setUpdating(null);
+    }
   };
 
   const handleRemoveItem = async (itemId: string) => {
-    setUpdating(itemId);
-    await removeFromCartClient(itemId);
-    await loadCart();
-    setUpdating(null);
+    try {
+      setUpdating(itemId);
+      await removeFromCartClient(itemId);
+      await loadCart();
+    } catch (error) {
+      console.error('Remove item error:', error);
+    } finally {
+      setUpdating(null);
+    }
   };
 
   const cartItems = cart?.cart_items || [];

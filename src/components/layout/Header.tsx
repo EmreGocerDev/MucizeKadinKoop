@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { Menu, X, ShoppingCart, User, Search, LogOut, Settings } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useCart } from '@/context/CartContext';
-import type { Session } from '@supabase/supabase-js';
 
 interface UserData {
   id: string;
@@ -38,19 +37,6 @@ export default function Header({ initialUser = null, initialCartCount = 0 }: Hea
   useEffect(() => {
     const supabase = createClient();
     let isMounted = true;
-    const syncAuthState = async (event: string, session: Session | null) => {
-      try {
-        await fetch('/api/auth/state', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          cache: 'no-store',
-          body: JSON.stringify({ event, session }),
-        });
-      } catch (error) {
-        console.error('Failed to sync auth state', error);
-      }
-    };
 
     // Helper function to load user profile
     const loadUserProfile = async (userId: string, email: string) => {
@@ -93,7 +79,6 @@ export default function Header({ initialUser = null, initialCartCount = 0 }: Hea
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          await syncAuthState('INITIAL_SESSION', session);
           await loadUserProfile(session.user.id, session.user.email || '');
         }
       } catch (error) {
@@ -106,7 +91,6 @@ export default function Header({ initialUser = null, initialCartCount = 0 }: Hea
     // Listen for auth changes - this also fires INITIAL_SESSION on mount
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth event:', event, 'Session:', session ? 'exists' : 'null');
-      void syncAuthState(event, session);
       
       if (session?.user) {
         await loadUserProfile(session.user.id, session.user.email || '');
@@ -129,9 +113,10 @@ export default function Header({ initialUser = null, initialCartCount = 0 }: Hea
   }, [setCartCount]);
 
   const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
     try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      
       await fetch('/api/auth/state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -139,12 +124,21 @@ export default function Header({ initialUser = null, initialCartCount = 0 }: Hea
         cache: 'no-store',
         body: JSON.stringify({ event: 'SIGNED_OUT', session: null }),
       });
+      
+      // Clear local state
+      setUser(null);
+      setCartCount(0);
+      setShowUserMenu(false);
+      
+      // Hard redirect to home
+      window.location.href = '/';
     } catch (error) {
-      console.error('Failed to sync sign out', error);
+      console.error('Logout error:', error);
+      // Still redirect on error
+      setUser(null);
+      setCartCount(0);
+      window.location.href = '/';
     }
-    setUser(null);
-    setShowUserMenu(false);
-    window.location.href = '/';
   };
 
   return (

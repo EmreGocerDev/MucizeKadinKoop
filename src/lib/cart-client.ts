@@ -21,7 +21,7 @@ async function getSessionWithTimeout(supabase: ReturnType<typeof createClient>, 
 
 export async function addToCartClient(productId: string, quantity: number = 1) {
   try {
-    const supabase = createClient();
+    const supabase = createClient() as any;
     const session = await getSessionWithTimeout(supabase);
 
     if (!session?.user) {
@@ -95,7 +95,7 @@ export async function addToCartClient(productId: string, quantity: number = 1) {
 
 export async function getCartClient() {
   try {
-    const supabase = createClient();
+    const supabase = createClient() as any;
     const session = await getSessionWithTimeout(supabase);
 
     if (!session?.user) return null;
@@ -127,7 +127,7 @@ export async function getCartClient() {
 
 export async function updateCartItemClient(itemId: string, quantity: number) {
   try {
-    const supabase = createClient();
+    const supabase = createClient() as any;
     const session = await getSessionWithTimeout(supabase);
 
     if (!session?.user) {
@@ -163,7 +163,7 @@ export async function updateCartItemClient(itemId: string, quantity: number) {
 
 export async function removeFromCartClient(itemId: string) {
   try {
-    const supabase = createClient();
+    const supabase = createClient() as any;
     const session = await getSessionWithTimeout(supabase);
 
     if (!session?.user) {
@@ -188,7 +188,7 @@ export async function removeFromCartClient(itemId: string) {
 
 export async function getCartCountClient(): Promise<number> {
   try {
-    const supabase = createClient();
+    const supabase = createClient() as any;
     const session = await getSessionWithTimeout(supabase);
 
     if (!session?.user) return 0;

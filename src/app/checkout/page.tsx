@@ -51,7 +51,7 @@ export default function CheckoutPage() {
 
   const loadCart = async () => {
     setLoading(true);
-    const cart = await getCartClient();
+    const cart = (await getCartClient()) as { cart_items: CartItem[] } | null;
     if (!cart || cart.cart_items.length === 0) {
       router.push('/cart');
       return;
